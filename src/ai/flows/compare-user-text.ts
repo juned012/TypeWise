@@ -35,7 +35,7 @@ const CompareUserTextOutputSchema = z.object({
   highlightedText: z
     .string()
     .describe(
-      'The original text with mistakes highlighted using HTML <span> tags with class "mistake".'
+      'The original text with highlighting using HTML <span> tags with classes "correct" (green background), "incorrect" (red background for spelling/substitution), and "omitted" (light gray background for omitted words).'
     ),
   mistakes: z.array(MistakeSchema).describe('An array of mistakes found in the user text.'),
   accuracy: z.number().describe('The accuracy percentage of the user text, comparing user text to the original.'),
@@ -80,7 +80,7 @@ Your analysis must perform the following actions and return them in a valid JSON
 4.  **Highlight Mistakes**: Create an HTML version of the *original text* where you wrap every mistake in a \`<span class="mistake">\` tag. Be precise. Omitted words can't be highlighted directly in the original text but must be reported in the mistakes list. Be careful to only highlight actual mistakes.
 5.  **Calculate Accuracy**: Calculate the accuracy as a percentage. This should be based on how much of the user's text correctly matches the corresponding part of the original text. A common formula is (Correctly typed words / Total words in user text) * 100. If the user typed nothing, accuracy is 0. If the user text is very short compared to the original, the accuracy might be high for the text they typed, but the omissions must be noted in the remarks.
 6.  **Calculate Typing Speed (WPM)**: Calculate the Words Per Minute (WPM). A word is typically defined as 5 characters, including spaces. The formula is: ((total characters in user typed text / 5) / durationSeconds) * 60. Base this on the text the user actually typed. If duration is 0 or user typed nothing, WPM should be 0.
-7.  **Analyze Timing/Consistency**: Assess the user's typing rhythm. Based on the duration and amount of text, comment on whether the typing was smooth, consistent, or had noticeable pauses. Example: "Mostly consistent, with a slight pause between paragraphs."
+  7.  **Analyze Timing/Consistency**: Assess the user's typing rhythm. Based on the duration and amount of text, comment on whether the typing was smooth, consistent, or had noticeable pauses. Example: "Mostly consistent, with a slight pause between paragraphs." Provide a JSON object with keys like "smoothness", "pauses", etc.
 8.  **Provide Overall Remarks**: Give a concise overall assessment of the user's performance, mentioning both strengths (e.g., "Good accuracy on the typed portion") and areas for improvement (e.g., "A significant portion of the original text was omitted.").
 
 Return a valid JSON object that strictly follows the output schema. It is critical that your entire response is a single JSON object and nothing else.

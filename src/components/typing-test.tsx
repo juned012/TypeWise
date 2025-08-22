@@ -371,7 +371,9 @@ export function TypingTest() {
                           key={type}
                           className="flex items-center gap-2 capitalize"
                         >
-                          <span className="font-bold text-lg">{count}</span>
+                          <span className="font-bold text-lg">
+                            {typeof count === "number" ? count : 0}
+                          </span>
                           <span className="text-sm text-muted-foreground">
                             {type}
                           </span>
@@ -386,7 +388,47 @@ export function TypingTest() {
             <CardHeader>
               <CardTitle>Highlighted Analysis</CardTitle>
               <CardDescription>
+                {originalText && (
+                  <div className="flex gap-4 text-sm">
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-muted-foreground" />
+                      <span>
+                        {
+                          originalText
+                            .split(/\s+/)
+                            .filter((word) => word.length > 0).length
+                        }
+                        Total original Words
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-muted-foreground" />
+                      <span>
+                        {
+                          userText
+                            .split(/\s+/)
+                            .filter((word) => word.length > 0).length
+                        }
+                        Total original Words
+                      </span>
+                    </div>
+                  </div>
+                )}
                 Here is the original text with your mistakes highlighted.
+                <div className="flex items-center gap-4 mt-2 text-sm">
+                  <div className="flex items-center gap-1">
+                    <span className="inline-block w-3 h-3 bg-green-600 rounded-full"></span>
+                    Correct
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="inline-block w-3 h-3 bg-red-600 rounded-full"></span>
+                    Incorrect
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="inline-block w-3 h-3 bg-gray-700 rounded-full"></span>{" "}
+                    Missing
+                  </div>
+                </div>
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -410,6 +452,17 @@ export function TypingTest() {
               {fileName}
             </Badge>
             <div className="flex gap-4 text-sm">
+              <div className="flex items-center gap-2">
+                <FileText className="h-4 w-4 text-muted-foreground" />
+                <span>
+                  {
+                    originalText.split(/\s+/).filter((word) => word.length > 0)
+                      .length
+                  }
+                  Words
+                </span>
+              </div>
+
               <div className="flex items-center gap-2">
                 <Timer className="h-4 w-4 text-muted-foreground" />
                 <span className="font-mono">

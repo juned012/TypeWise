@@ -41,7 +41,7 @@
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
   }
- 
+
   .dark {
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
@@ -69,7 +69,7 @@
     --chart-5: 340 75% 55%;
   }
 }
- 
+
 @layer base {
   * {
     @apply border-border;
@@ -77,4 +77,16 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+.correct {
+  background-color: rgb(49, 151, 49); /* Or your desired shade of green */
+}
+
+.incorrect {
+  background-color: rgb(175, 48, 48); /* Or your desired shade of red */
+}
+
+.omitted {
+  background-color: rgb(32, 32, 32);
 }
