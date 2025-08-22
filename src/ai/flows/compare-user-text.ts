@@ -8,7 +8,7 @@
  * - CompareUserTextOutput - Output type for the compareUser-text function.
  */
 
-import {ai} from '@/ai/genkit';
+import { ai } from '../client'; // or '../client' depending on folder
 import {z} from 'genkit';
 
 const CompareUserTextInputSchema = z.object({
