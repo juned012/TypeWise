@@ -1,6 +1,12 @@
 "use client";
 
-import { useState, useRef, type ChangeEvent, useEffect } from "react";
+import {
+  useReducer,
+  useRef,
+  type ChangeEvent,
+  useEffect,
+  useCallback,
+} from "react";
 import Link from "next/link";
 import {
   Upload,
@@ -11,7 +17,6 @@ import {
   Target,
   RefreshCw,
   Timer,
-  History,
   LogIn,
   Sparkles,
   LineChart,
@@ -61,18 +66,78 @@ export type HistoryItem = CompareUserTextOutput & {
   userId?: string;
 };
 
+// Define the initial state and reducer function
+const initialState = {
+  originalText: "",
+  userText: "",
+  audioUrl: null as string | null,
+  result: null as CompareUserTextOutput | null,
+  isLoading: false,
+  loadingMessage: "",
+  fileName: "",
+  startTime: null as number | null,
+  elapsedTime: 0,
+  wpm: 0,
+};
+
+type State = typeof initialState;
+type Action =
+  | { type: "SET_ORIGINAL_TEXT"; payload: string }
+  | { type: "SET_USER_TEXT"; payload: string }
+  | { type: "SET_AUDIO_URL"; payload: string | null }
+  | { type: "SET_RESULT"; payload: CompareUserTextOutput | null }
+  | { type: "SET_LOADING"; payload: boolean }
+  | { type: "SET_LOADING_MESSAGE"; payload: string }
+  | { type: "SET_FILE_NAME"; payload: string }
+  | { type: "SET_START_TIME"; payload: number | null }
+  | { type: "SET_ELAPSED_TIME"; payload: number }
+  | { type: "SET_WPM"; payload: number }
+  | { type: "RESET" };
+
+function reducer(state: State, action: Action): State {
+  switch (action.type) {
+    case "SET_ORIGINAL_TEXT":
+      return { ...state, originalText: action.payload };
+    case "SET_USER_TEXT":
+      return { ...state, userText: action.payload };
+    case "SET_AUDIO_URL":
+      return { ...state, audioUrl: action.payload };
+    case "SET_RESULT":
+      return { ...state, result: action.payload };
+    case "SET_LOADING":
+      return { ...state, isLoading: action.payload };
+    case "SET_LOADING_MESSAGE":
+      return { ...state, loadingMessage: action.payload };
+    case "SET_FILE_NAME":
+      return { ...state, fileName: action.payload };
+    case "SET_START_TIME":
+      return { ...state, startTime: action.payload };
+    case "SET_ELAPSED_TIME":
+      return { ...state, elapsedTime: action.payload };
+    case "SET_WPM":
+      return { ...state, wpm: action.payload };
+    case "RESET":
+      return initialState;
+    default:
+      return state;
+  }
+}
+
 export function TypingTest() {
   const { user } = useAuth();
-  const [originalText, setOriginalText] = useState<string>("");
-  const [userText, setUserText] = useState<string>("");
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
-  const [result, setResult] = useState<CompareUserTextOutput | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [loadingMessage, setLoadingMessage] = useState<string>("");
-  const [fileName, setFileName] = useState<string>("");
-  const [startTime, setStartTime] = useState<number | null>(null);
-  const [elapsedTime, setElapsedTime] = useState<number>(0);
-  const [wpm, setWpm] = useState<number>(0);
+  const [state, dispatch] = useReducer(reducer, initialState);
+  const {
+    originalText,
+    userText,
+    audioUrl,
+    result,
+    isLoading,
+    loadingMessage,
+    fileName,
+    startTime,
+    elapsedTime,
+    wpm,
+  } = state;
 
   const audioInputRef = useRef<HTMLInputElement>(null);
   const textInputRef = useRef<HTMLInputElement>(null);
@@ -81,115 +146,128 @@ export function TypingTest() {
 
   const { toast } = useToast();
 
-  const clearTimer = () => {
+  const clearTimer = useCallback(() => {
     if (timerIntervalRef.current) {
       clearInterval(timerIntervalRef.current);
       timerIntervalRef.current = null;
     }
-  };
+  }, []);
 
   useEffect(() => {
     return () => {
       clearTimer();
     };
-  }, []);
+  }, [clearTimer]);
 
-  const handleResetTypingState = () => {
+  const handleResetTypingState = useCallback(() => {
     clearTimer();
-    setStartTime(null);
-    setElapsedTime(0);
-    setWpm(0);
-  };
+    dispatch({ type: "SET_START_TIME", payload: null });
+    dispatch({ type: "SET_ELAPSED_TIME", payload: 0 });
+    dispatch({ type: "SET_WPM", payload: 0 });
+  }, [clearTimer, dispatch]);
 
-  const handleFileSelect = (ref: React.RefObject<HTMLInputElement>) => {
-    if (!user) {
-      toast({
-        variant: "destructive",
-        title: "Authentication Required",
-        description: "You need to be logged in to start a test.",
-        action: (
-          <Link href="/login">
-            <Button variant="secondary" size="sm">
-              <LogIn className="mr-2 h-4 w-4" /> Login
-            </Button>
-          </Link>
-        ),
-      });
-      return;
-    }
-    ref.current?.click();
-  };
+  const handleFileSelect = useCallback(
+    (ref: React.RefObject<HTMLInputElement>) => {
+      if (!user) {
+        toast({
+          variant: "destructive",
+          title: "Authentication Required",
+          description: "You need to be logged in to start a test.",
+          action: (
+            <Link href="/login">
+              <Button variant="secondary" size="sm">
+                <LogIn className="mr-2 h-4 w-4" /> Login
+              </Button>
+            </Link>
+          ),
+        });
+        return;
+      }
+      ref.current?.click();
+    },
+    [user, toast]
+  );
 
-  const handleReset = () => {
-    setOriginalText("");
-    setUserText("");
-    setAudioUrl(null);
-    setResult(null);
-    setIsLoading(false);
-    setLoadingMessage("");
-    setFileName("");
+  const handleReset = useCallback(() => {
+    dispatch({ type: "RESET" });
     handleResetTypingState();
     if (audioInputRef.current) audioInputRef.current.value = "";
     if (textInputRef.current) textInputRef.current.value = "";
-  };
+  }, [dispatch, handleResetTypingState]);
 
-  const processFile = async (file: File, type: "audio" | "text") => {
-    handleReset();
-    setIsLoading(true);
-    setFileName(file.name);
-
-    try {
-      if (type === "audio") {
-        setLoadingMessage("Transcribing audio, this may take a moment...");
-        const audioDataUri = await readFileAs(file, "dataURL");
-        setAudioUrl(audioDataUri);
-        const { transcription } = await transcribeAudio({ audioDataUri });
-        setOriginalText(transcription);
-      } else {
-        setLoadingMessage("Processing text file...");
-        const textContent = await readFileAs(file, "text");
-        setOriginalText(textContent);
-      }
-    } catch (error) {
-      console.error("Error processing file:", error);
-      toast({
-        variant: "destructive",
-        title: "File Processing Error",
-        description: "Could not process the file. Please try a different one.",
-      });
+  const processFile = useCallback(
+    async (file: File, type: "audio" | "text") => {
       handleReset();
-    } finally {
-      setIsLoading(false);
-      setLoadingMessage("");
-    }
-  };
+      dispatch({ type: "SET_LOADING", payload: true });
+      dispatch({ type: "SET_FILE_NAME", payload: file.name });
 
-  const handleAudioFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) processFile(file, "audio");
-  };
+      try {
+        if (type === "audio") {
+          dispatch({
+            type: "SET_LOADING_MESSAGE",
+            payload: "Transcribing audio, this may take a moment...",
+          });
+          const audioDataUri = await readFileAs(file, "dataURL");
+          dispatch({ type: "SET_AUDIO_URL", payload: audioDataUri });
+          const { transcription } = await transcribeAudio({ audioDataUri });
+          dispatch({ type: "SET_ORIGINAL_TEXT", payload: transcription });
+        } else {
+          dispatch({
+            type: "SET_LOADING_MESSAGE",
+            payload: "Processing text file...",
+          });
+          const textContent = await readFileAs(file, "text");
+          dispatch({ type: "SET_ORIGINAL_TEXT", payload: textContent });
+        }
+      } catch (error) {
+        console.error("Error processing file:", error);
+        toast({
+          variant: "destructive",
+          title: "File Processing Error",
+          description:
+            "Could not process the file. Please try a different one.",
+        });
+        handleReset();
+      } finally {
+        dispatch({ type: "SET_LOADING", payload: false });
+        dispatch({ type: "SET_LOADING_MESSAGE", payload: "" });
+      }
+    },
+    [handleReset, dispatch, toast]
+  );
 
-  const handleTextFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) processFile(file, "text");
-  };
+  const handleAudioFileChange = useCallback(
+    (e: ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) processFile(file, "audio");
+    },
+    [processFile]
+  );
+
+  const handleTextFileChange = useCallback(
+    (e: ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) processFile(file, "text");
+    },
+    [processFile]
+  );
 
   const handleUserTextChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
     const newText = e.target.value;
-    setUserText(newText);
+    dispatch({ type: "SET_USER_TEXT", payload: newText });
 
     if (!startTime && newText.length > 0) {
       const now = Date.now();
-      setStartTime(now);
+      dispatch({ type: "SET_START_TIME", payload: now });
       clearTimer();
 
       timerIntervalRef.current = setInterval(() => {
         const currentElapsedTime = Math.floor((Date.now() - now) / 1000);
-        setElapsedTime(currentElapsedTime);
+        dispatch({ type: "SET_ELAPSED_TIME", payload: currentElapsedTime });
         if (currentElapsedTime > 0) {
           const words = newText.trim().split(/\s+/).length;
           const currentWpm = (words / currentElapsedTime) * 60;
-          setWpm(Math.round(currentWpm));
+          dispatch({ type: "SET_WPM", payload: Math.round(currentWpm) });
         }
       }, 1000);
     }
@@ -199,7 +277,7 @@ export function TypingTest() {
       if (seconds > 0) {
         const words = newText.trim().split(/\s+/).length;
         const currentWpm = (words / seconds) * 60;
-        setWpm(Math.round(currentWpm));
+        dispatch({ type: "SET_WPM", payload: Math.round(currentWpm) });
       }
     }
 
@@ -242,15 +320,18 @@ export function TypingTest() {
       return;
     }
 
-    setIsLoading(true);
-    setLoadingMessage("Analyzing your performance...");
+    dispatch({ type: "SET_LOADING", payload: true });
+    dispatch({
+      type: "SET_LOADING_MESSAGE",
+      payload: "Analyzing your performance...",
+    });
     if (audioPlayerRef.current) audioPlayerRef.current.pause();
     clearTimer();
 
     const finalElapsedTime = startTime
       ? Math.floor((Date.now() - startTime) / 1000)
       : elapsedTime;
-    setElapsedTime(finalElapsedTime);
+    dispatch({ type: "SET_ELAPSED_TIME", payload: finalElapsedTime });
 
     try {
       const analysisResult = await compareUserText({
@@ -258,7 +339,7 @@ export function TypingTest() {
         userText,
         durationSeconds: finalElapsedTime,
       });
-      setResult(analysisResult);
+      dispatch({ type: "SET_RESULT", payload: analysisResult });
       saveToHistory(analysisResult);
     } catch (error) {
       console.error("Error analyzing text:", error);
@@ -268,8 +349,8 @@ export function TypingTest() {
         description: "Could not analyze your text. Please try again.",
       });
     } finally {
-      setIsLoading(false);
-      setLoadingMessage("");
+      dispatch({ type: "SET_LOADING", payload: false });
+      dispatch({ type: "SET_LOADING_MESSAGE", payload: "" });
     }
   };
 
@@ -388,33 +469,8 @@ export function TypingTest() {
             <CardHeader>
               <CardTitle>Highlighted Analysis</CardTitle>
               <CardDescription>
-                {originalText && (
-                  <div className="flex gap-4 text-sm">
-                    <div className="flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-muted-foreground" />
-                      <span>
-                        {
-                          originalText
-                            .split(/\s+/)
-                            .filter((word) => word.length > 0).length
-                        }
-                        Total original Words
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-muted-foreground" />
-                      <span>
-                        {
-                          userText
-                            .split(/\s+/)
-                            .filter((word) => word.length > 0).length
-                        }
-                        Total original Words
-                      </span>
-                    </div>
-                  </div>
-                )}
-                Here is the original text with your mistakes highlighted.
+                Compare your typing with the original text. Mistakes are
+                highlighted.
                 <div className="flex items-center gap-4 mt-2 text-sm">
                   <div className="flex items-center gap-1">
                     <span className="inline-block w-3 h-3 bg-green-600 rounded-full"></span>
@@ -425,7 +481,7 @@ export function TypingTest() {
                     Incorrect
                   </div>
                   <div className="flex items-center gap-1">
-                    <span className="inline-block w-3 h-3 bg-gray-700 rounded-full"></span>{" "}
+                    <span className="inline-block w-3 h-3 bg-gray-700 rounded-full"></span>
                     Missing
                   </div>
                 </div>
@@ -433,10 +489,53 @@ export function TypingTest() {
             </CardHeader>
             <CardContent>
               <ScrollArea className="h-60 w-full rounded-md border p-4">
-                <div
-                  className="prose dark:prose-invert"
-                  dangerouslySetInnerHTML={{ __html: result.highlightedText }}
-                ></div>
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Original Text */}
+                  <div className="prose dark:prose-invert border-r pr-2">
+                    <h4 className="text-sm font-semibold mb-2">
+                      Original Text
+                    </h4>
+                    <div
+                      dangerouslySetInnerHTML={{
+                        __html:
+                          result.highlightedText ||
+                          originalText
+                            .split(/\s+/)
+                            .map((word, idx) => {
+                              const userWords = userText.split(/\s+/);
+                              const typedWord = userWords[idx];
+                              if (typedWord === word)
+                                return `<span class="text-green-600">${word}</span>`;
+                              if (!typedWord)
+                                return `<span class="text-gray-700">${word}</span>`;
+                              return `<span class="text-red-600" title="You typed: ${typedWord}">${word}</span>`;
+                            })
+                            .join(" "),
+                      }}
+                    />
+                  </div>
+
+                  {/* User Typed Text */}
+                  <div className="prose dark:prose-invert pl-2">
+                    <h4 className="text-sm font-semibold mb-2">Your Typing</h4>
+                    <div
+                      dangerouslySetInnerHTML={{
+                        __html: userText
+                          .split(/\s+/)
+                          .map((word, idx) => {
+                            const originalWords = originalText.split(/\s+/);
+                            const originalWord = originalWords[idx];
+                            if (word === originalWord)
+                              return `<span class="text-green-600">${word}</span>`;
+                            if (!originalWord)
+                              return `<span class="text-yellow-500">${word}</span>`;
+                            return `<span class="text-red-600" title="Expected: ${originalWord}">${word}</span>`;
+                          })
+                          .join(" "),
+                      }}
+                    />
+                  </div>
+                </div>
               </ScrollArea>
             </CardContent>
           </Card>

@@ -1,16 +1,20 @@
-import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
-import './globals.css';
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
-import { cn } from '@/lib/utils';
-import { AuthProvider } from '@/contexts/auth-context';
-import { AppHeader } from '@/components/app-header';
+import { cn } from "@/lib/utils";
+import { AuthProvider } from "@/contexts/auth-context";
+import { AppHeader } from "@/components/app-header";
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
+const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
-  title: 'TypeWise',
-  description: 'Improve your typing speed and accuracy by comparing your input against transcribed audio or text files.',
+  title: "TypeWise",
+  description:
+    "Improve your typing speed and accuracy by comparing your input against transcribed audio or text files.",
+  icons: {
+    icon: "/favicon.ico",
+  },
 };
 
 export default function RootLayout({
@@ -20,11 +24,16 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
-      <body className={cn("min-h-screen bg-background font-sans antialiased", inter.variable)}>
+      <body
+        className={cn(
+          "min-h-screen bg-background font-sans antialiased",
+          inter.variable
+        )}
+      >
         <AuthProvider>
-            <AppHeader />
-            {children}
-            <Toaster />
+          <AppHeader />
+          {children}
+          <Toaster />
         </AuthProvider>
       </body>
     </html>
